@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">EduScanAI</string>
+    <string name="take_photo">拍照</string>
+    <string name="select_image">选择图片</string>
+    <string name="process_image">处理图片</string>
+    <string name="result">分析结果</string>
+    <string name="analyze_again">再次分析</string>
+    <string name="back_to_home">返回首页</string>
+    <string name="permissions_denied">需要相机和存储权限以使用此功能</string>
+    <string name="processing">正在处理中...</string>
+    <string name="capture_hint">请将题目内容放在框内</string>
+    <string name="teacher_response">老师解答</string>
+    <string name="ocr_result">OCR识别结果</string>
+    <string name="save_result">保存结果</string>
+    <string name="share_result">分享结果</string>
+    <string name="loading">加载中...</string>
+    <string name="error_processing">处理出错，请重试</string>
+</resources> 

@@ -101,6 +101,195 @@
             display: inline-block;
             margin-top: 10px;
         }
+        
+        /* 缩略图预览区域 */
+        .thumbnails-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+            justify-content: flex-start;
+            max-height: 350px;
+            overflow-y: auto;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        
+        .thumbnail-item {
+            width: 150px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            background: white;
+            position: relative;
+        }
+        
+        .thumbnail-item.selected {
+            border: 2px solid #4a8eff;
+        }
+        
+        .thumbnail-preview {
+            height: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .thumbnail-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .thumbnail-info {
+            padding: 8px;
+            font-size: 0.85rem;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        .thumbnail-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 3px;
+        }
+        
+        .thumbnail-size {
+            display: block;
+            font-size: 0.75rem;
+            color: #666;
+        }
+        
+        .thumbnail-close {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 2;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        .thumbnail-close:hover {
+            background: rgba(255,50,50,0.8);
+            color: white;
+        }
+        
+        /* 实时预览区域 */
+        .live-preview-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        
+        .live-preview {
+            flex: 1;
+        }
+        
+        .live-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .live-preview-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .live-preview-image {
+            height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #f7f7f7;
+            border-radius: 5px;
+        }
+        
+        .live-preview-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .live-preview-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f7fb;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .batch-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .batch-actions button {
+            padding: 10px 15px;
+            margin-top: 0;
+        }
+        
+        /* 批量结果列表 */
+        .batch-results {
+            margin-top: 20px;
+        }
+        
+        .batch-result-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #f0f5ff;
+            border-radius: 5px 5px 0 0;
+            font-weight: 600;
+        }
+        
+        .batch-result-item {
+            display: flex;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+        }
+        
+        .result-filename {
+            flex: 2;
+        }
+        
+        .result-original-size, .result-compressed-size, .result-saved {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .result-action {
+            flex: 1;
+            text-align: right;
+        }
+        
+        .download-all-btn {
+            margin-top: 15px;
+            background-color: #39d353;
+        }
     </style>
 </head>
 <body>
@@ -115,13 +304,48 @@
                 <div class="upload-area" id="dropArea">
                     <img src="img/upload-icon.svg" alt="上传图标" class="upload-icon" id="uploadIcon">
                     <p>拖放图片到这里或</p>
-                    <!-- 专用的按钮，与上传区域分离 -->
+                    <!-- 修改为支持多选图片 -->
                     <button type="button" id="selectImageBtn" class="upload-btn">选择图片</button>
-                    <input type="file" id="fileInput" accept="image/*">
+                    <input type="file" id="fileInput" accept="image/*" multiple>
                 </div>
                 
                 <!-- 状态指示区域 -->
                 <div id="statusIndicator" class="status-indicator hidden"></div>
+                
+                <!-- 添加缩略图预览区域 -->
+                <div class="thumbnails-container hidden" id="thumbnailsContainer"></div>
+                
+                <!-- 添加实时预览区域 -->
+                <div class="live-preview-container hidden" id="livePreviewContainer">
+                    <div class="live-preview">
+                        <div class="live-preview-header">
+                            <span class="live-preview-title">原始图片</span>
+                        </div>
+                        <div class="live-preview-image">
+                            <img id="liveOriginalImage" src="" alt="原始图片预览">
+                        </div>
+                        <div class="live-preview-info">
+                            <p>尺寸: <span id="liveOriginalSize">0 KB</span></p>
+                            <p>分辨率: <span id="liveOriginalResolution">0 x 0</span></p>
+                            <p>类型: <span id="liveOriginalType">未知</span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="live-preview">
+                        <div class="live-preview-header">
+                            <span class="live-preview-title">压缩预览</span>
+                            <span id="liveCompressionRate">0%</span>
+                        </div>
+                        <div class="live-preview-image">
+                            <img id="liveCompressedImage" src="" alt="压缩预览">
+                        </div>
+                        <div class="live-preview-info">
+                            <p>预估大小: <span id="liveCompressedSize">0 KB</span></p>
+                            <p>分辨率: <span id="liveCompressedResolution">0 x 0</span></p>
+                            <p>节省: <span id="liveSizeDifference">0 KB (0%)</span></p>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="compression-options">
                     <div class="option-group">
@@ -136,7 +360,14 @@
                         <label for="maxHeightInput">最大高度 (可选)：</label>
                         <input type="number" id="maxHeightInput" placeholder="原始尺寸">
                     </div>
-                    <button id="compressBtn" disabled>压缩图片</button>
+                    
+                    <!-- 批量操作按钮 -->
+                    <div class="batch-actions">
+                        <button id="selectAllBtn" disabled>全选</button>
+                        <button id="deselectAllBtn" disabled>取消选择</button>
+                        <button id="removeSelectedBtn" disabled>移除所选</button>
+                        <button id="compressBtn" disabled>压缩图片</button>
+                    </div>
                 </div>
                 
                 <!-- 调试面板 -->
@@ -147,34 +378,51 @@
             </div>
 
             <div class="result-container hidden" id="resultContainer">
-                <div class="comparison">
-                    <div class="image-card">
-                        <h3>原始图片</h3>
-                        <div class="image-preview">
-                            <img id="originalImage" src="" alt="原始图片">
-                        </div>
-                        <div class="image-info">
-                            <p>尺寸：<span id="originalSize">0 KB</span></p>
-                            <p>分辨率：<span id="originalResolution">0 x 0</span></p>
-                        </div>
+                <!-- 多图片压缩结果 -->
+                <div id="batchResults" class="batch-results hidden">
+                    <h3>批量压缩结果</h3>
+                    <div class="batch-result-header">
+                        <div class="result-filename">文件名</div>
+                        <div class="result-original-size">原始大小</div>
+                        <div class="result-compressed-size">压缩后大小</div>
+                        <div class="result-saved">节省</div>
+                        <div class="result-action">操作</div>
                     </div>
-
-                    <div class="image-card">
-                        <h3>压缩后图片</h3>
-                        <div class="image-preview">
-                            <img id="compressedImage" src="" alt="压缩图片">
-                        </div>
-                        <div class="image-info">
-                            <p>尺寸：<span id="compressedSize">0 KB</span></p>
-                            <p>分辨率：<span id="compressedResolution">0 x 0</span></p>
-                            <p>减少：<span id="sizeDifference">0%</span></p>
-                        </div>
-                    </div>
+                    <div id="batchResultsList"></div>
+                    <button id="downloadAllBtn" class="download-all-btn">下载所有压缩图片</button>
                 </div>
+                
+                <!-- 单图片压缩结果（保留原有功能） -->
+                <div id="singleResultView">
+                    <div class="comparison">
+                        <div class="image-card">
+                            <h3>原始图片</h3>
+                            <div class="image-preview">
+                                <img id="originalImage" src="" alt="原始图片">
+                            </div>
+                            <div class="image-info">
+                                <p>尺寸：<span id="originalSize">0 KB</span></p>
+                                <p>分辨率：<span id="originalResolution">0 x 0</span></p>
+                            </div>
+                        </div>
 
-                <div class="download-area">
-                    <button id="downloadBtn">下载压缩图片</button>
-                    <button id="newImageBtn">压缩新图片</button>
+                        <div class="image-card">
+                            <h3>压缩后图片</h3>
+                            <div class="image-preview">
+                                <img id="compressedImage" src="" alt="压缩图片">
+                            </div>
+                            <div class="image-info">
+                                <p>尺寸：<span id="compressedSize">0 KB</span></p>
+                                <p>分辨率：<span id="compressedResolution">0 x 0</span></p>
+                                <p>减少：<span id="sizeDifference">0%</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="download-area">
+                        <button id="downloadBtn">下载压缩图片</button>
+                        <button id="newImageBtn">压缩新图片</button>
+                    </div>
                 </div>
             </div>
         </main>
@@ -194,6 +442,10 @@
 
     <!-- 引入最新的压缩库 -->
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
+    <!-- 引入JSZip库用于多文件下载 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
     <!-- 备用压缩库链接 -->
     <script>
         // 检查主压缩库是否加载成功

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>躲避障碍物</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>躲避障碍物</h1>
+            <div class="score-container">
+                <div>分数: <span id="score">0</span></div>
+                <div>最高分: <span id="highScore">0</span></div>
+            </div>
+        </header>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="controls">
+            <button id="leftBtn">← 左移</button>
+            <button id="startBtn">开始游戏</button>
+            <button id="rightBtn">右移 →</button>
+        </div>
+        
+        <div id="gameOverScreen" class="game-over-screen hidden">
+            <h2>游戏结束!</h2>
+            <p>你的分数: <span id="finalScore">0</span></p>
+            <button id="restartBtn">重新开始</button>
+        </div>
+    </div>
+    
+    <script src="js/game.js"></script>
+</body>
+</html> 
