@@ -112,6 +112,9 @@ function initApp() {
         loadingOverlay.style.display = 'none';
     }
     
+    // 添加缩略图自定义样式
+    addThumbnailStyles();
+    
     // 检查压缩库是否加载成功
     if (typeof imageCompression === 'undefined') {
         console.error('图片压缩库加载失败');
@@ -195,8 +198,8 @@ function setupEventListeners() {
     
     // 拖放区域事件
     if (dropArea) {
-        dropArea.addEventListener('dragover', handleDragOver);
-        dropArea.addEventListener('dragleave', handleDragLeave);
+dropArea.addEventListener('dragover', handleDragOver);
+dropArea.addEventListener('dragleave', handleDragLeave);
         dropArea.addEventListener('drop', handleFileDrop);
     }
     
@@ -204,21 +207,32 @@ function setupEventListeners() {
     if (qualitySlider) {
         // 移除原有监听器
         qualitySlider.removeEventListener('input', updateQualityValue);
-        // 添加新的监听器，包含实时预览
+        
+        // 添加新的监听器，包含实时预览 - 使用input事件以便即时响应
         qualitySlider.addEventListener('input', function() {
-            updateQualityValue();
-            // 触发实时预览
-            debounceGenerateLivePreview();
+updateQualityValue();
+
+            // 更新压缩率显示
+            if (liveCompressionRate) {
+                liveCompressionRate.textContent = `${qualitySlider.value}%`;
+            }
+            
+            // 触发实时预览，减少延迟时间提高响应速度
+            triggerLivePreview(150);
         });
     }
     
     // 最大尺寸输入事件 - 添加实时预览
     if (maxWidthInput) {
-        maxWidthInput.addEventListener('input', debounceGenerateLivePreview);
+        maxWidthInput.addEventListener('input', function() {
+            triggerLivePreview(200);
+        });
     }
     
     if (maxHeightInput) {
-        maxHeightInput.addEventListener('input', debounceGenerateLivePreview);
+        maxHeightInput.addEventListener('input', function() {
+            triggerLivePreview(200);
+        });
     }
     
     // 批量处理按钮事件
@@ -377,6 +391,11 @@ function createThumbnail(file, index) {
         thumbnailItem.classList.add('selected');
     }
     
+    // 当前预览状态
+    if (currentPreviewIndex === index) {
+        thumbnailItem.classList.add('current-preview');
+    }
+    
     // 预览区域
     const thumbnailPreview = document.createElement('div');
     thumbnailPreview.className = 'thumbnail-preview';
@@ -423,25 +442,52 @@ function createThumbnail(file, index) {
     thumbnailItem.appendChild(thumbnailPreview);
     thumbnailItem.appendChild(thumbnailInfo);
     
-    // 点击事件 - 选择/取消选择
-    thumbnailItem.addEventListener('click', function() {
-        toggleSelection(index);
-    });
-    
-    // 双击事件 - 预览
-    thumbnailItem.addEventListener('dblclick', function() {
-        selectThumbnail(index);
+    // 点击事件 - 修改为同时处理选择和预览
+    thumbnailItem.addEventListener('click', function(e) {
+        // 如果按住Ctrl键，则切换选择状态而不更新预览
+        if (e.ctrlKey || e.metaKey) {
+            toggleSelection(index);
+        } else {
+            // 更新预览并选中图片
+            selectThumbnailAndPreview(index);
+        }
     });
     
     thumbnailsContainer.appendChild(thumbnailItem);
 }
 
-// 选择缩略图进行预览
+// 新增：选择缩略图并更新预览
+function selectThumbnailAndPreview(index) {
+    if (index < 0 || index >= imageFiles.length) return;
+    
+    // 更新当前预览索引
+    currentPreviewIndex = index;
+    
+    // 如果不在选中列表中，则添加到选中列表
+    if (!selectedFiles.includes(index)) {
+        // 如果没有按住Ctrl键，则清除之前的选择
+        selectedFiles = [index];
+    }
+    
+    // 更新所有缩略图的显示状态
+    updateThumbnails();
+    updateBatchActionButtons();
+    
+    // 读取并显示原始图像
+    readImageForPreview(imageFiles[index]);
+    
+    addDebugLog(`选择并预览图片 #${index}: ${imageFiles[index].name}`);
+}
+
+// 选择缩略图进行预览 (保留原有功能，但主要由selectThumbnailAndPreview代替)
 function selectThumbnail(index) {
     if (index < 0 || index >= imageFiles.length) return;
     
     currentPreviewIndex = index;
     addDebugLog(`选择图片 #${index} 进行预览: ${imageFiles[index].name}`);
+    
+    // 更新缩略图的视觉状态
+    updateThumbnails();
     
     // 读取并显示原始图像
     readImageForPreview(imageFiles[index]);
@@ -646,9 +692,9 @@ function readFileAsDataURL(file) {
     addDebugLog('开始读取文件...');
     
     try {
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
             addDebugLog('文件读取完成');
             handleFileReadComplete(e.target.result);
         };
@@ -697,7 +743,7 @@ function handleFileReadComplete(dataURL) {
             
             // 启用压缩按钮
             if (compressBtn) {
-                compressBtn.disabled = false;
+            compressBtn.disabled = false;
                 // 自动滚动到压缩按钮
                 compressBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
@@ -782,7 +828,7 @@ function resetProcessingState() {
 // 更新质量值显示
 function updateQualityValue() {
     if (qualitySlider && qualityValue) {
-        qualityValue.textContent = `${qualitySlider.value}%`;
+    qualityValue.textContent = `${qualitySlider.value}%`;
     }
 }
 
@@ -839,33 +885,69 @@ function readImageForPreview(file) {
     }
 }
 
-// 延迟执行实时预览（防抖）
-function debounceGenerateLivePreview() {
+// 触发实时预览，可自定义延迟时间
+function triggerLivePreview(delay = 200) {
     if (livePreviewTimeoutId) {
         clearTimeout(livePreviewTimeoutId);
     }
     
-    livePreviewTimeoutId = setTimeout(() => {
-        if (currentPreviewIndex >= 0 && currentPreviewIndex < imageFiles.length) {
-            const file = imageFiles[currentPreviewIndex];
-            
-            // 读取文件并更新预览
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const image = new Image();
-                image.onload = function() {
-                    generateLivePreview(file, e.target.result, image.width, image.height);
-                };
-                image.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+    // 如果有预估大小显示元素，立即更新一个估计值，提供即时反馈
+    if (liveCompressedSize && currentPreviewIndex >= 0 && currentPreviewIndex < imageFiles.length) {
+        const file = imageFiles[currentPreviewIndex];
+        const quality = parseFloat(qualitySlider.value) / 100;
+        
+        // 基于质量值给出快速预估值（简单估算）
+        const estimatedSize = Math.max(
+            file.size * quality * 0.7, // 估算值，基于质量
+            file.size * 0.1  // 最小不低于原始大小的10%
+        );
+        
+        liveCompressedSize.textContent = `≈ ${formatFileSize(estimatedSize)} (预估)`;
+        
+        // 计算预估节省的大小和百分比
+        const savedBytes = file.size - estimatedSize;
+        const savedPercent = Math.max(0, Math.round((savedBytes / file.size) * 100));
+        
+        if (liveSizeDifference) {
+            liveSizeDifference.textContent = `≈ ${formatFileSize(savedBytes)} (${savedPercent}%) (预估)`;
         }
-    }, 300); // 300ms延迟，避免频繁更新
+    }
+    
+    // 延迟后进行实际压缩预览
+    livePreviewTimeoutId = setTimeout(() => {
+        debounceGenerateLivePreview();
+    }, delay);
+}
+
+// 延迟执行实时预览（防抖）
+function debounceGenerateLivePreview() {
+    if (currentPreviewIndex >= 0 && currentPreviewIndex < imageFiles.length) {
+        const file = imageFiles[currentPreviewIndex];
+        
+        // 读取文件并更新预览
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const image = new Image();
+            image.onload = function() {
+                generateLivePreview(file, e.target.result, image.width, image.height);
+            };
+            image.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
 }
 
 // 生成实时压缩预览
 async function generateLivePreview(file, dataUrl, width, height) {
-    if (!file || !dataUrl || isGeneratingLivePreview) return;
+    if (!file || !dataUrl) return;
+    
+    // 如果正在生成预览，不要立即返回，而是等待之前的预览生成完成
+    if (isGeneratingLivePreview) {
+        setTimeout(() => {
+            generateLivePreview(file, dataUrl, width, height);
+        }, 50);
+        return;
+    }
     
     isGeneratingLivePreview = true;
     addDebugLog(`生成实时压缩预览: ${file.name}`);
@@ -903,7 +985,10 @@ async function generateLivePreview(file, dataUrl, width, height) {
                 compressedImage.onload = function() {
                     // 设置压缩后图像信息
                     if (liveCompressedImage) liveCompressedImage.src = compressedUrl;
-                    if (liveCompressedSize) liveCompressedSize.textContent = formatFileSize(compressedFile.size);
+                    if (liveCompressedSize) {
+                        // 移除"预估"标记，显示实际大小
+                        liveCompressedSize.textContent = formatFileSize(compressedFile.size);
+                    }
                     if (liveCompressedResolution) {
                         liveCompressedResolution.textContent = `${compressedImage.width} x ${compressedImage.height}`;
                     }
@@ -965,7 +1050,7 @@ function startCompression() {
     
     // 显示加载状态
     if (loadingOverlay) {
-        loadingOverlay.classList.remove('hidden');
+    loadingOverlay.classList.remove('hidden');
         loadingOverlay.style.display = 'flex';
     }
     
@@ -974,12 +1059,12 @@ function startCompression() {
     const maxWidth = parseInt(maxWidthInput.value) || 0;
     const maxHeight = parseInt(maxHeightInput.value) || 0;
     
-    // 准备压缩选项
-    const options = {
+        // 准备压缩选项
+        const options = {
         maxSizeMB: 10,
         maxWidthOrHeight: Math.max(maxWidth, maxHeight) || undefined,
-        useWebWorker: true,
-        maxIteration: 10,
+            useWebWorker: true,
+            maxIteration: 10,
         quality: quality
     };
     
@@ -1123,10 +1208,10 @@ async function compressFile(file, options, index) {
 // 显示压缩结果
 function showCompressionResults(isSingleFile) {
     if (compressedResults.length === 0) return;
-    
-    // 显示结果容器
+            
+            // 显示结果容器
     if (resultContainer) {
-        resultContainer.classList.remove('hidden');
+            resultContainer.classList.remove('hidden');
     }
     
     if (isSingleFile) {
@@ -1136,8 +1221,8 @@ function showCompressionResults(isSingleFile) {
         // 批量模式
         showBatchResults();
     }
-    
-    // 滚动到结果
+            
+            // 滚动到结果
     if (resultContainer) {
         resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -1280,25 +1365,25 @@ function downloadCompressedImage() {
     isProcessingFile = true;
     
     try {
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(compressedBlob);
-        
-        // 设置下载文件名
-        const fileName = originalFile.name;
-        const fileExtension = fileName.split('.').pop().toLowerCase();
-        const newFileName = fileName.replace(
-            '.' + fileExtension, 
-            `-compressed.${fileExtension === 'png' || fileExtension === 'gif' ? fileExtension : 'jpg'}`
-        );
-        
-        link.download = newFileName;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(compressedBlob);
+    
+    // 设置下载文件名
+    const fileName = originalFile.name;
+    const fileExtension = fileName.split('.').pop().toLowerCase();
+    const newFileName = fileName.replace(
+        '.' + fileExtension, 
+        `-compressed.${fileExtension === 'png' || fileExtension === 'gif' ? fileExtension : 'jpg'}`
+    );
+    
+    link.download = newFileName;
         addDebugLog(`触发下载: ${newFileName}`);
         showStatus(`正在下载: ${newFileName}`, 'success');
-        link.click();
-        
-        // 清理URL对象
+    link.click();
+    
+    // 清理URL对象
         setTimeout(() => {
-            URL.revokeObjectURL(link.href);
+    URL.revokeObjectURL(link.href);
             addDebugLog('URL对象已清理');
         }, 100);
     } catch (error) {
@@ -1446,4 +1531,30 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 在CSS中添加current-preview样式 - 在缩略图容器后面添加
+function addThumbnailStyles() {
+    // 检查是否已存在样式
+    if (document.getElementById('thumbnail-custom-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'thumbnail-custom-styles';
+    style.textContent = `
+        .thumbnail-item.current-preview {
+            border: 2px solid #2196F3 !important;
+            box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
+        }
+        .thumbnail-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+        .thumbnail-item.selected.current-preview {
+            border: 2px solid #673AB7 !important;
+            box-shadow: 0 0 10px rgba(103, 58, 183, 0.5);
+        }
+    `;
+    document.head.appendChild(style);
+    addDebugLog('添加缩略图自定义样式');
 } 
